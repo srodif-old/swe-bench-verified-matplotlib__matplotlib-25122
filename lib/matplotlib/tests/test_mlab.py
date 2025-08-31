@@ -1072,3 +1072,37 @@ def test_psd_oversampling():
                     sides='onesided')
     Su_1side = np.append([Su[0]], Su[1:4] + Su[4:][::-1])
     assert_almost_equal(np.sum(P), np.sum(Su_1side))  # same energy
+
+
+def test_psd_window_correction_negative_values():
+    """Test window correction with windows having negative values (Issue #25122)."""
+    # Create a simple window with negative values to test the correction
+    window_with_negatives = np.array([1.0, -0.5, 0.8, -0.2, 1.2])
+    
+    # Create some test data
+    np.random.seed(42)
+    x = np.random.randn(1024)
+    
+    # Test PSD with both scale_by_freq modes
+    spec_s, freq_s = mlab.psd(x, NFFT=len(window_with_negatives), 
+                              window=window_with_negatives,
+                              scale_by_freq=True, noverlap=0, pad_to=None,
+                              Fs=2)  # default Fs
+    spec_n, freq_n = mlab.psd(x, NFFT=len(window_with_negatives),
+                              window=window_with_negatives,
+                              scale_by_freq=False, noverlap=0, pad_to=None, 
+                              Fs=2)  # default Fs
+    
+    # Verify the relationship between scale_by_freq=True and scale_by_freq=False
+    # This is the same relationship tested in test_psd_windowarray_scale_by_freq
+    # but now with a window that has negative values
+    Fs = 2
+    win = window_with_negatives
+    
+    # The expected relationship: spec_s * (win**2).sum() = spec_n / Fs * win.sum()**2
+    left_side = spec_s * (win**2).sum()
+    right_side = spec_n / Fs * win.sum()**2
+    
+    # They should be close (this would fail before the fix due to incorrect normalization)
+    assert_allclose(left_side, right_side, atol=1e-10,
+                    err_msg="Window correction failed for windows with negative values")

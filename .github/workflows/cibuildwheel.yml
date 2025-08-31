@@ -115,7 +115,7 @@ jobs:
         run: |
           python3 ./ci/check_wheel_licenses.py
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: wheels
           path: ./wheelhouse/*.whl
